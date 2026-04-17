@@ -4,7 +4,7 @@ import PyPDF2
 
 app = Flask(__name__)
 
-# ✅ Extract text
+# 🔹 Extract text
 def extract_text(pdf_file):
     try:
         pdf_file.seek(0)
@@ -19,51 +19,48 @@ def extract_text(pdf_file):
         return ""
 
 
-# 🔥 STRONG TOPIC FILTER (ONLY topic content)
+# 🔥 STRICT TOPIC FILTER (VERY IMPORTANT)
 def filter_topic(text, topic):
     if not topic:
-        return text[:1500]
+        return text[:1000]
 
-    topic = topic.lower()
+    topic_words = topic.lower().split()
     sentences = text.split(".")
 
     result = []
 
-    for i, s in enumerate(sentences):
-        if topic in s.lower():
-            # take surrounding context
-            start = max(0, i-2)
-            end = min(len(sentences), i+3)
-            result.extend(sentences[start:end])
+    for s in sentences:
+        s_lower = s.lower()
+        match = sum(1 for w in topic_words if w in s_lower)
+
+        if match >= len(topic_words):
+            result.append(s.strip())
 
     if result:
-        return ". ".join(result[:12])
+        return ". ".join(result[:6])  # 🔥 LIMIT
 
-    return f"⚠️ Topic '{topic}' not found clearly in PDF."
+    return f"⚠️ Topic '{topic}' not found."
 
 
-# ✅ FEATURES
+# 🔹 FEATURES
 def generate_summary(text):
-    sentences = text.split(".")
-    return " ".join(sentences[:5])
+    return " ".join(text.split(".")[:5])
 
 
 def generate_explanation(text):
-    sentences = text.split(".")
-    return "Explanation:\n\n" + "\n".join(sentences[:8])
+    return "Explanation:\n\n" + "\n".join(text.split(".")[:6])
 
 
 def generate_notes(text):
-    sentences = text.split(".")
-    return "\n".join([f"• {s.strip()}" for s in sentences[:10] if s.strip()])
+    return "\n".join([f"• {s.strip()}" for s in text.split(".")[:8] if s.strip()])
 
 
 # 🔥 QUIZ (20+20+20)
 def generate_quiz(text):
     sentences = [s.strip() for s in text.split(".") if len(s.strip()) > 20]
 
-    if len(sentences) == 0:
-        return "⚠️ Not enough content for quiz."
+    if not sentences:
+        return "⚠️ Not enough content."
 
     quiz = "📘 QUIZ\n\n"
 
@@ -112,7 +109,7 @@ Practice:
 """
 
 
-# 🌐 ROUTE
+# 🌐 MAIN ROUTE
 @app.route("/", methods=["GET", "POST"])
 def index():
     result = ""
@@ -122,17 +119,18 @@ def index():
         action = request.form.get("action")
         topic = request.form.get("topic")
 
-        if not pdf or not pdf.filename.endswith(".pdf"):
-            return render_template("index.html", result="⚠️ Upload a valid PDF")
+        if not pdf:
+            return render_template("index.html", result="⚠️ Upload PDF")
 
         text = extract_text(pdf)
 
         if not text:
-            return render_template("index.html", result="⚠️ Could not read PDF")
+            return render_template("index.html", result="⚠️ Cannot read PDF")
 
-        # 🔥 IMPORTANT: Topic filtering
+        # 🔥 APPLY TOPIC FILTER
         text = filter_topic(text, topic)
 
+        # 🎯 ACTIONS
         if action == "summary":
             result = generate_summary(text)
 
