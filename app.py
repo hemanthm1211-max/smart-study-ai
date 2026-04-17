@@ -1,10 +1,11 @@
 from flask import Flask, request, render_template
 import io
 import PyPDF2
+import os
 
 app = Flask(__name__)
 
-# 🔹 Extract text
+# 🔹 STEP 1: Extract text
 def extract_text(pdf_file):
     try:
         pdf_file.seek(0)
@@ -19,48 +20,57 @@ def extract_text(pdf_file):
         return ""
 
 
-# 🔥 STRICT TOPIC FILTER (VERY IMPORTANT)
-def filter_topic(text, topic):
+# 🔥 STEP 2: RETRIEVAL (RAG)
+def retrieve_content(text, topic):
     if not topic:
         return text[:1000]
 
-    topic_words = topic.lower().split()
+    topic = topic.lower()
     sentences = text.split(".")
 
     result = []
 
-    for s in sentences:
-        s_lower = s.lower()
-        match = sum(1 for w in topic_words if w in s_lower)
-
-        if match >= len(topic_words):
-            result.append(s.strip())
+    for i, s in enumerate(sentences):
+        if topic in s.lower():
+            # take nearby context
+            start = max(0, i - 1)
+            end = min(len(sentences), i + 2)
+            result.extend(sentences[start:end])
 
     if result:
-        return ". ".join(result[:6])  # 🔥 LIMIT
+        return ". ".join(result[:6])
 
-    return f"⚠️ Topic '{topic}' not found."
+    return f"⚠️ Topic '{topic}' not found in PDF."
 
 
-# 🔹 FEATURES
+# 🔹 STEP 3: GENERATION (RAG)
+
 def generate_summary(text):
     return " ".join(text.split(".")[:5])
 
 
-def generate_explanation(text):
-    return "Explanation:\n\n" + "\n".join(text.split(".")[:6])
+def generate_explanation(text, topic):
+    return f"""
+🔍 Retrieved Content for '{topic}':
+
+{text}
+
+🧠 Generated Explanation:
+
+This topic explains:
+{text[:300]}...
+"""
 
 
 def generate_notes(text):
     return "\n".join([f"• {s.strip()}" for s in text.split(".")[:8] if s.strip()])
 
 
-# 🔥 QUIZ (20+20+20)
 def generate_quiz(text):
     sentences = [s.strip() for s in text.split(".") if len(s.strip()) > 20]
 
     if not sentences:
-        return "⚠️ Not enough content."
+        return "⚠️ Not enough content for quiz."
 
     quiz = "📘 QUIZ\n\n"
 
@@ -127,27 +137,28 @@ def index():
         if not text:
             return render_template("index.html", result="⚠️ Cannot read PDF")
 
-        # 🔥 APPLY TOPIC FILTER
-        text = filter_topic(text, topic)
+        # 🔥 RAG FLOW
+        retrieved_text = retrieve_content(text, topic)
 
-        # 🎯 ACTIONS
         if action == "summary":
-            result = generate_summary(text)
+            result = generate_summary(retrieved_text)
 
         elif action == "explain":
-            result = generate_explanation(text)
+            result = generate_explanation(retrieved_text, topic)
 
         elif action == "quiz":
-            result = generate_quiz(text)
+            result = generate_quiz(retrieved_text)
 
         elif action == "notes":
-            result = generate_notes(text)
+            result = generate_notes(retrieved_text)
 
         elif action == "prepare":
-            result = generate_prepare(text)
+            result = generate_prepare(retrieved_text)
 
     return render_template("index.html", result=result)
 
 
+# 🚀 IMPORTANT FOR ONLINE DEPLOYMENT
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 8080))  # required
+    app.run(host="0.0.0.0", port=port)        # required
