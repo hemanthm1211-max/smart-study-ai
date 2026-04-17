@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Smart Study AI</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            max-width: 750px;
+            margin: auto;
+            box-shadow: 0px 5px 15px rgba(0,0,0,0.2);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        input, select {
+            padding: 8px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        button {
+            padding: 10px;
+            margin: 5px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            color: white;
+        }
+
+        .summary { background: #4CAF50; }
+        .explain { background: #2196F3; }
+        .quiz { background: #FF9800; }
+        .notes { background: #9C27B0; }
+
+        button:hover {
+            opacity: 0.8;
+        }
+
+        pre {
+            background: #f1f1f1;
+            padding: 15px;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .audio-btn {
+            background: black;
+            margin-top: 10px;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>📚 Smart Study AI</h1>
+
+    <form method="POST" enctype="multipart/form-data">
+
+        <label>Upload PDF:</label>
+        <input type="file" name="pdf" required>
+
+        <label>Select Language:</label>
+        <select name="language">
+            <option>English</option>
+            <option>Kannada</option>
+            <option>Hindi</option>
+        </select>
+
+        <div>
+            <button class="summary" name="action" value="summary">📄 Summary</button>
+            <button class="explain" name="action" value="explain">📘 Explain</button>
+            <button class="quiz" name="action" value="quiz">❓ Quiz</button>
+            <button class="notes" name="action" value="notes">📝 Notes</button>
+        </div>
+
+    </form>
+
+    <hr>
+
+    <h3>Output:</h3>
+
+    <pre id="output">{{ result }}</pre>
+
+    <button class="audio-btn" onclick="speak()">🔊 Listen</button>
+
+</div>
+
+<script>
+function speak(){
+    let text = document.getElementById("output").innerText;
+
+    if(text.trim() === ""){
+        alert("No content to read!");
+        return;
+    }
+
+    let speech = new SpeechSynthesisUtterance(text);
+    speech.lang = "en-US";
+
+    window.speechSynthesis.speak(speech);
+}
+</script>
+
+</body>
